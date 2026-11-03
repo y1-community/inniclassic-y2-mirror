@@ -1,39 +1,11 @@
 {
   "schema": 1,
-  "generated_at": "2026-11-03T15:43:18Z",
+  "generated_at": "2026-11-03T18:30:41Z",
   "source_repo": "JonaszPotoniec/inniclassic-y2",
   "mirror_repo": "y1-community/inniclassic-y2-mirror",
   "title_prefix": "Portable Flashing Package: ",
   "updater_repo": "y1-community/updater-ce-neo",
   "platforms": [
-    {
-      "key": "windows",
-      "os": "windows",
-      "arch": "x86-64",
-      "suffix": "-windows.zip",
-      "layout": "sp_flash_tool"
-    },
-    {
-      "key": "windows-arm64",
-      "os": "windows",
-      "arch": "arm64",
-      "suffix": "-windows-arm64.zip",
-      "layout": "sp_flash_tool"
-    },
-    {
-      "key": "linux",
-      "os": "linux",
-      "arch": "x86-64",
-      "suffix": "-linux.zip",
-      "layout": "sp_flash_tool"
-    },
-    {
-      "key": "linux-arm64",
-      "os": "linux",
-      "arch": "arm64",
-      "suffix": "-linux-arm64.zip",
-      "layout": "sp_flash_tool"
-    },
     {
       "key": "macos",
       "os": "macos",
@@ -53,123 +25,43 @@
       "source_notes": "The Biggest Release!\r\n\r\n- The entire application codebase has been rewritten from Java to 100% Kotlin, decomposing the monolithic main activity into dedicated domain managers, screen controllers, and an input router, backed by 16 regression test suites running in CI.\r\n- Audiobooks is now a dedicated top-level section on the main menu, with hierarchical Jellyfin sync (Author -> Book -> Chapter), cover art downloads, continuous bookmark persistence across reboots, full chapter playlist resume, and a unified split-screen layout.\r\n- The Videos section now provides a hierarchical browser for Movies, TV Series (with seasons and episodes), and raw directories, split-screen poster previews, Jellyfin video and thumbnail sync, and an automatic directory migration for existing files.\r\n- Music Quiz transitions to an endless survival mode with six questions per round, speed scaling down to five seconds, a between-round pause screen with a heart shop, a persistent top 10 leaderboard, and tiered year question distractors.\r\n- A new Recently Played Albums menu item beneath Cover Flow tracks up to 50 recently played albums with cover art, track counts, track-number-ordered browsing, and an option to clear playback history.\r\n- Device shutdown now saves the active queue and playback position, automatically restoring the player in a paused state at the exact track and timestamp after rebooting.\r\n- Playback cleanly pauses and rewinds to the first track when finishing an album with repeat turned off, while the library scanner now skips files smaller than 1KB and logs corrupt audio files.\r\n- Back navigation now preserves selected row focus and scroll position across the main menu, settings, playlists, and browser lists instead of resetting to the top item.\r\n- Split-screen pages in Music, Videos, and Audiobooks now share a unified 242dp status bar width matching the left navigation pane, while video browsing fixes eliminate poster clipping, top gaps, and double padding.\r\n- Now Playing album art now reliably updates on the main menu and music split panes during playback.\r\n- The theme catalog has been streamlined to Classic Light and Classic Dark, automatically cleaning up leftover assets from legacy themes during startup.\r\n- Physical buttons and wheel haptic feedback are now completely muted while the screen is off when Screen-Off Control is disabled, and the idle backlight sleep timer now stays synchronized with system settings.\r\n\r\n#### Release assets\r\n\r\n| File | Target device | Notes |\r\n| :--- | :--- | :--- |\r\n| `InniClassic-20261017.apk` | All devices (Y1 / Y2) | Standalone launcher APK (sideload or install) |\r\n| `update.json` | All devices | OTA update metadata for in-app updater |\r\n| `rom_y2.zip` | Innioasis Y2 (MT6582) | Complete flashable ROM with dual-storage, watchdog & clickwheel keylayout |\r\n| `rom_y1_type_a.zip` (`rom.zip`) | Innioasis Y1 (Type A) | Flashable ROM for Y1 players with original firmware 2.0.0 or higher |\r\n| `rom_y1_type_b.zip` (`rom_type_b.zip`) | Innioasis Y1 (Type B) | Flashable ROM for Y1 players with original firmware below 2.0.0 |\r\n| `SHA256SUMS.txt` | All files | SHA-256 integrity checksums |\r\n\r\nFull changelog: https://github.com/JonaszPotoniec/inniclassic-y2/compare/20261013...20261017",
       "assets": [
         {
-          "name": "rom-windows.zip",
-          "source_asset": "rom.zip",
-          "platform": "windows",
-          "size": 691737816,
-          "sha256": "7a7a4cd356c66ad8a4d7979b9f1bc84acb7beefa0915a1e3ac5109d19f923eca",
-          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom-windows.zip"
-        },
-        {
-          "name": "rom-linux.zip",
-          "source_asset": "rom.zip",
-          "platform": "linux",
-          "size": 843048535,
-          "sha256": "5b1eee9d3cb185247f6188763ec6b5028d39f5bb96c6f7477d67a7d723b5f07a",
-          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom-linux.zip"
-        },
-        {
           "name": "rom-macos.zip",
           "source_asset": "rom.zip",
           "platform": "macos",
-          "size": 642953229,
-          "sha256": "cbfc627e2c0c685422d9e75d507c1cf5f28f01ce54437d53559490b71332466a",
+          "size": 642161305,
+          "sha256": "b2287b588cb5099f10a7e5759104b182d52fab21e05c40af1996ea36b7933781",
           "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom-macos.zip"
-        },
-        {
-          "name": "rom_type_b-windows.zip",
-          "source_asset": "rom_type_b.zip",
-          "platform": "windows",
-          "size": 658685817,
-          "sha256": "227e79f4639f95a84b752b29903324c57d89b720281b8cdf5bc2bc4da08f45aa",
-          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_type_b-windows.zip"
-        },
-        {
-          "name": "rom_type_b-linux.zip",
-          "source_asset": "rom_type_b.zip",
-          "platform": "linux",
-          "size": 809996536,
-          "sha256": "21a754fb7466ecc68c181e19070b955260e7a3c20bf176afafada23787a2a16e",
-          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_type_b-linux.zip"
         },
         {
           "name": "rom_type_b-macos.zip",
           "source_asset": "rom_type_b.zip",
           "platform": "macos",
-          "size": 609901235,
-          "sha256": "235c8410a72675c82c73af4b697d152f265c9c0239fe8767595fb05ec6fea4b7",
+          "size": 609109313,
+          "sha256": "20e687846119b39f04a8ed053ad6b2610f5962ea6830a044609cc3ea378b7590",
           "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_type_b-macos.zip"
-        },
-        {
-          "name": "rom_y1_type_a-windows.zip",
-          "source_asset": "rom_y1_type_a.zip",
-          "platform": "windows",
-          "size": 691737816,
-          "sha256": "d8a8440953fc9cab102ffc51fedbaf597f869800ee3fedd262897677324a91eb",
-          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_y1_type_a-windows.zip"
-        },
-        {
-          "name": "rom_y1_type_a-linux.zip",
-          "source_asset": "rom_y1_type_a.zip",
-          "platform": "linux",
-          "size": 843048535,
-          "sha256": "c090f158cc498d44c94f419b991da343c3dadb7673b5e0afbfb4c3129009d4dd",
-          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_y1_type_a-linux.zip"
         },
         {
           "name": "rom_y1_type_a-macos.zip",
           "source_asset": "rom_y1_type_a.zip",
           "platform": "macos",
-          "size": 642953236,
-          "sha256": "27b94ed60def48a9c3d90c5e16b33f464c924c4d711055e57242684f8234ce37",
+          "size": 642161312,
+          "sha256": "9a7e15d5fe823749e4f69e2d12e5fa49e00011c0959217a0071eca4efe0bdcb5",
           "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_y1_type_a-macos.zip"
-        },
-        {
-          "name": "rom_y1_type_b-windows.zip",
-          "source_asset": "rom_y1_type_b.zip",
-          "platform": "windows",
-          "size": 658685817,
-          "sha256": "c94353916a96648d1973b2cb72e5c7ae5a0c4d3634a2403685b10afdf8130fbb",
-          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_y1_type_b-windows.zip"
-        },
-        {
-          "name": "rom_y1_type_b-linux.zip",
-          "source_asset": "rom_y1_type_b.zip",
-          "platform": "linux",
-          "size": 809996536,
-          "sha256": "578f587c4bcc73bbf1f4280e8aa07659cf6e1b3d3acef2a266b0f5f46559ffa8",
-          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_y1_type_b-linux.zip"
         },
         {
           "name": "rom_y1_type_b-macos.zip",
           "source_asset": "rom_y1_type_b.zip",
           "platform": "macos",
-          "size": 609901237,
-          "sha256": "25d1d687b620d1dd0b2ba46449e6c4af7ea4e23f1e2a06a06af55b48dd402a4f",
+          "size": 609109316,
+          "sha256": "3e1e36d4c36161f8d037ecedb94da687863f144b4d9b563aad3400c54a639e2a",
           "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_y1_type_b-macos.zip"
-        },
-        {
-          "name": "rom_y2-windows.zip",
-          "source_asset": "rom_y2.zip",
-          "platform": "windows",
-          "size": 629595655,
-          "sha256": "d20a12e343b13eaa9297f1582a9c44a65dafdbdbcfe844263852f3e85fcec1b0",
-          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_y2-windows.zip"
-        },
-        {
-          "name": "rom_y2-linux.zip",
-          "source_asset": "rom_y2.zip",
-          "platform": "linux",
-          "size": 806454817,
-          "sha256": "e45947e9ebca578dded9d3b60e3e759bfff05017d35b56b5f50f110b5e4ce99d",
-          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_y2-linux.zip"
         },
         {
           "name": "rom_y2-macos.zip",
           "source_asset": "rom_y2.zip",
           "platform": "macos",
-          "size": 646150402,
-          "sha256": "6f26770c62b3ea60bbdab56ee69aedd5b3f9d25a72f493e29224ff2b810f6f36",
+          "size": 573596798,
+          "sha256": "b153a21d803965933c0edf3bd4277861bcab6a4ee68586d1e04ed3ba94e878d6",
           "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261017/rom_y2-macos.zip"
         }
       ],

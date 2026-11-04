@@ -49,6 +49,19 @@ def first_tag(tags, *keys):
     return ""
 
 
+def all_tags(tags, *keys):
+    if not tags:
+        return ""
+    for key in keys:
+        val = tags.get(key)
+        if val:
+            if isinstance(val, list):
+                parts = [str(v).strip() for v in val if str(v).strip()]
+                return "; ".join(parts)
+            return str(val).strip()
+    return ""
+
+
 def extract_track_number(raw):
     if not raw:
         return 0
@@ -105,13 +118,21 @@ def scan_folder(local_root: Path, device_root: str):
                     artist = first_tag(tags, "artist")
                     album = first_tag(tags, "album")
                     year = first_tag(tags, "date", "year", "originaldate")[:4]
-                    genre = first_tag(tags, "genre")
+                    genre = all_tags(tags, "genre")
                     album_artist = first_tag(tags, "albumartist", "album artist")
                     composer = first_tag(tags, "composer")
                     track_num = extract_track_number(first_tag(tags, "tracknumber", "track"))
                     compilation = read_compilation(local_path, tags)
             except Exception as e:
                 print(f"  ! couldn't read tags from {local_path}: {e}", file=sys.stderr)
+
+            try:
+                st = local_path.stat()
+                date_modified = int(st.st_mtime) * 1000
+                file_size = st.st_size
+            except Exception:
+                date_modified = 0
+                file_size = 0
 
             entry = {
                 "path": device_path,
@@ -124,6 +145,10 @@ def scan_folder(local_root: Path, device_root: str):
                 "composer": composer,
                 "trackNum": track_num,
             }
+            if date_modified > 0:
+                entry["dateModified"] = date_modified
+            if file_size > 0:
+                entry["fileSize"] = file_size
             # As the app writes it: only for compilation tracks; a missing field reads as false.
             if compilation:
                 entry["compilation"] = True

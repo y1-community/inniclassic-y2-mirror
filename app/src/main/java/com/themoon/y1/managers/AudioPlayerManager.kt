@@ -1,5 +1,6 @@
 package com.themoon.y1.managers
 
+import com.themoon.y1.Prefs
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -11,7 +12,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.util.Base64
-import android.widget.Toast
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.DefaultRenderersFactory
 import com.google.android.exoplayer2.ExoPlaybackException
@@ -36,6 +36,7 @@ import com.themoon.y1.MainActivity
 import com.themoon.y1.R
 import com.themoon.y1.StoragePaths
 import com.themoon.y1.core.TimeFormat
+import com.themoon.y1.views.Notice
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
@@ -215,7 +216,7 @@ class AudioPlayerManager private constructor() {
         exoPlayer = SimpleExoPlayer.Builder(context.applicationContext, renderersFactory).build().apply {
             // Partial wake lock while it plays: music continues when Android turns the screen off.
             setWakeMode(C.WAKE_MODE_LOCAL)
-            val initialRepeatMode = MainActivity.instance?.prefs?.getInt("repeat_mode", 0) ?: 0
+            val initialRepeatMode = MainActivity.instance?.prefs?.let { Prefs.REPEAT_MODE.get(it) } ?: 0
             repeatMode = when (initialRepeatMode) {
                 1 -> Player.REPEAT_MODE_ONE
                 2 -> Player.REPEAT_MODE_ALL
@@ -303,7 +304,7 @@ class AudioPlayerManager private constructor() {
         } else if (isUsingLegacyPlayer) {
             MainActivity.instance?.let { main ->
                 main.runOnUiThread {
-                    Toast.makeText(main, "Speed control is disabled for FLAC files on this device.", Toast.LENGTH_SHORT).show()
+                    Notice.show(main, "Speed control is disabled for FLAC files on this device.")
                 }
             }
         }
@@ -332,7 +333,7 @@ class AudioPlayerManager private constructor() {
         val main = MainActivity.instance ?: return
         main.runOnUiThread {
             try {
-                val repeatMode = main.prefs.getInt("repeat_mode", 0)
+                val repeatMode = Prefs.REPEAT_MODE.get(main.prefs)
                 if (repeatMode == 1) {
                     if (isUsingLegacyPlayer && legacyPlayer != null) {
                         legacyPlayer?.seekTo(0)
@@ -379,7 +380,7 @@ class AudioPlayerManager private constructor() {
     private fun handleTrackError(errorMsg: String) {
         val main = MainActivity.instance ?: return
         main.runOnUiThread {
-            Toast.makeText(main, "$errorMsg Skipping...", Toast.LENGTH_SHORT).show()
+            Notice.error(main, "$errorMsg Skipping...")
             nextTrack()
         }
     }
@@ -402,8 +403,8 @@ class AudioPlayerManager private constructor() {
         main.currentPlaylist.clear()
         main.currentPlaylist.addAll(newList)
 
-        val isShuffle = main.prefs.getBoolean("shuffle", false)
-        val repeatPref = main.prefs.getInt("repeat_mode", 0)
+        val isShuffle = Prefs.SHUFFLE.get(main.prefs)
+        val repeatPref = Prefs.REPEAT_MODE.get(main.prefs)
         if (isShuffle) {
             shuffleWithFirst(main.currentPlaylist, targetSong)
             main.currentIndex = 0
@@ -540,13 +541,7 @@ class AudioPlayerManager private constructor() {
             val sec = totalSec % 60
             MainActivity.instance?.let { main ->
                 main.runOnUiThread {
-                    try {
-                        val toast = Toast.makeText(main, "Resuming playback from ${min}m ${sec}s", Toast.LENGTH_SHORT)
-                        val toastLayout = toast.view as? android.widget.LinearLayout
-                        val toastTV = toastLayout?.getChildAt(0) as? android.widget.TextView
-                        toastTV?.textSize = 18f
-                        toast.show()
-                    } catch (ignored: Exception) {}
+                    Notice.show(main, "Resuming playback from ${min}m ${sec}s")
                 }
             }
         }
@@ -726,12 +721,12 @@ class AudioPlayerManager private constructor() {
 
             main.consecutiveErrorCount++
             if (main.consecutiveErrorCount >= main.currentPlaylist.size) {
-                Toast.makeText(main, "All tracks failed. Playback stopped.", Toast.LENGTH_SHORT).show()
+                Notice.error(main, "All tracks failed. Playback stopped.")
                 main.isPausedByHand = true
                 main.updatePlayerUI()
                 main.consecutiveErrorCount = 0
             } else {
-                Toast.makeText(main, "Corrupted file detected. Skipping...", Toast.LENGTH_SHORT).show()
+                Notice.error(main, "Corrupted file detected. Skipping...")
                 Handler(Looper.getMainLooper()).postDelayed({ nextTrack() }, 1500)
             }
             return
@@ -985,7 +980,7 @@ class AudioPlayerManager private constructor() {
                 exoPlayer?.setMediaSource(mediaSource)
                 exoPlayer?.prepare()
 
-                val isShuffle = main.prefs.getBoolean("shuffle", false)
+                val isShuffle = Prefs.SHUFFLE.get(main.prefs)
                 exoPlayer?.shuffleModeEnabled = isShuffle
 
                 if (effectiveSeekMs > 0) {
@@ -1021,7 +1016,7 @@ class AudioPlayerManager private constructor() {
             main.tvPlayerTitle.text = "Load Failed"
             main.tvPlayerArtist.text = failReason
             main.tvPlayerAlbum.text = ""
-            Toast.makeText(main, failReason, Toast.LENGTH_SHORT).show()
+            Notice.error(main, failReason)
 
             if (main.consecutiveErrorCount >= main.currentPlaylist.size) {
                 main.isPausedByHand = true
@@ -1966,8 +1961,8 @@ class AudioPlayerManager private constructor() {
             main.isPausedByHand = true
             main.isAudiobookLibraryMode = isAudiobook
 
-            val isShuffle = main.prefs.getBoolean("shuffle", false)
-            val repeatPref = main.prefs.getInt("repeat_mode", 0)
+            val isShuffle = Prefs.SHUFFLE.get(main.prefs)
+            val repeatPref = Prefs.REPEAT_MODE.get(main.prefs)
             if (!isUsingLegacyPlayer && exoPlayer != null) {
                 exoPlayer?.shuffleModeEnabled = isShuffle
                 setRepeatMode(repeatPref)

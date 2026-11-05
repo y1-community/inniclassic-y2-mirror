@@ -7,7 +7,6 @@ import android.view.ViewGroup
 import android.widget.ListView
 import android.widget.TextView
 import com.themoon.y1.navigation.NavigationManager
-import com.themoon.y1.views.ListPosition
 import com.themoon.y1.views.QwertyKeyboardView
 import java.io.File
 
@@ -60,9 +59,11 @@ fun MainActivity.applyThemeLive(backgroundChanged: Boolean = false) {
     step("now playing") { playerController.applyThemeColors() }
     step("chrome") { applyTheme() }
     step("screen") {
-        val position = ListPosition.of(window.decorView)
-        NavigationManager.getInstance().activeController?.onThemeChanged()
-        position?.restore()
+        // The same row at the same height, as after Back (ListRows): found by its text, else by its index
+        val controller = NavigationManager.getInstance().activeController
+        val row = controller?.selectedRow()
+        controller?.onThemeChanged()
+        if (row != null) controller.selectRow(row)
     }
     LiveTheme.lastApplyMs = SystemClock.uptimeMillis() - t0
     LiveTheme.applyCount++
@@ -79,7 +80,7 @@ private inline fun step(name: String, block: () -> Unit) {
 
 /** What the main menu background shows: a change of it needs a new decode. */
 private fun MainActivity.themeBackgroundKey(): String {
-    val path = prefs.getString("bg_path", null)
+    val path = prefs.getString(Prefs.BACKGROUND.key, null)
     if (path != "THEME_DEFAULT") return "path:$path"
     val theme = ThemeManager.getCurrentTheme()
     val names = listOf(theme.bgImage, "background.png", "bg.png").filter { it.isNotEmpty() }

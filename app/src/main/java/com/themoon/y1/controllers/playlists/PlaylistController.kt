@@ -1,28 +1,26 @@
 package com.themoon.y1.controllers.playlists
 
 import android.app.Activity
-import android.os.Build
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ListView
-import android.widget.ScrollView
-import android.widget.TextView
-import android.widget.Toast
 import com.themoon.y1.R
 import com.themoon.y1.StoragePaths
 import com.themoon.y1.ThemeManager
 import com.themoon.y1.adapters.SongListAdapter
 import com.themoon.y1.controllers.ScreenController
+import com.themoon.y1.controllers.settings.ActionScreens
+import com.themoon.y1.lists.Focus
+import com.themoon.y1.lists.ListScreen
+import com.themoon.y1.lists.ListSpec
+import com.themoon.y1.lists.RowSpec
 import com.themoon.y1.managers.PlayHistoryManager
 import com.themoon.y1.models.SongItem
 import com.themoon.y1.navigation.BrowserMode
 import com.themoon.y1.navigation.ScreenState
-import com.themoon.y1.views.AlphabetIndexBar
-import com.themoon.y1.views.TablerIcons
-import com.themoon.y1.views.WheelDialog
+import com.themoon.y1.views.Notice
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
@@ -31,7 +29,6 @@ import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.util.ArrayList
-import java.util.Collections
 
 /**
  * Controller for M3U playlist browsing, song listing, creation, and editing:
@@ -44,32 +41,16 @@ class PlaylistController(
     private val activity: Activity,
     override val rootView: ViewGroup,
     private val listVirtualSongs: ListView?,
-    private val hzIndexScroll: android.widget.HorizontalScrollView?,
-    private val layoutIndexContainer: LinearLayout?,
     private val musicRootFolder: File,
     private val isAudioFile: (File) -> Boolean,
-    private val createListButtonWithIcon: (icon: String, text: String, color: Int?) -> View,
     private val clickFeedback: () -> Unit,
     private val onPlaylistSelected: (m3uFile: File) -> Unit,
     private val localize: (String) -> String
 ) : ScreenController {
 
-    private val containerBrowserItems: LinearLayout = rootView.findViewById(R.id.container_browser_items)
-    private val scrollViewBrowser: View? = containerBrowserItems.parent as? View
-    private val tvBrowserPath: TextView = rootView.findViewById(R.id.tv_browser_path)
-
-    private val alphabetIndexBarHelper = if (hzIndexScroll != null && layoutIndexContainer != null) {
-        AlphabetIndexBar(
-            activity,
-            hzIndexScroll,
-            layoutIndexContainer,
-            listVirtualSongs,
-            clickFeedback
-        )
-    } else null
+    private val screen = ListScreen(rootView.findViewById(R.id.container_browser_items), listVirtualSongs, clickFeedback)
 
     var currentM3uFile: File? = null
-    var lastPlaylistFocusName: String = ""
 
     override fun onEnter(state: ScreenState) {
         when (state) {
@@ -94,152 +75,54 @@ class PlaylistController(
     }
 
     override fun onExit() {
-        containerBrowserItems.removeAllViews()
+        screen.clear()
     }
 
     override fun onThemeChanged() {
         com.themoon.y1.navigation.NavigationManager.getInstance().currentState?.let { onEnter(it) }
     }
 
-    fun buildPlaylistsUI() {
-        scrollViewBrowser?.visibility = View.VISIBLE
-        listVirtualSongs?.visibility = View.GONE
-        containerBrowserItems.removeAllViews()
-        tvBrowserPath.text = localize("Playlists")
+    override fun onWheel(delta: Int, event: KeyEvent): Boolean = screen.wheel(delta)
 
+    override fun title(): String? = screen.title
+
+    /** The smart playlists, then the M3U files of the Playlists folder (A to Z). Opens at the last opened playlist. */
+    fun buildPlaylistsUI() {
         val playlistDir = StoragePaths.getPlaylistsDir()
         if (!playlistDir.exists()) {
             playlistDir.mkdirs()
         }
+        val m3uFiles = (playlistDir.listFiles() ?: emptyArray()).filter { f ->
+            val name = f.name.lowercase()
+            f.isFile && (name.endsWith(".m3u") || name.endsWith(".m3u8"))
+        }.sortedWith { f1, f2 -> f1.name.compareTo(f2.name, ignoreCase = true) }
 
-        val files = playlistDir.listFiles()
-        val m3uFiles = ArrayList<File>()
-        if (files != null) {
-            for (f in files) {
-                val name = f.name.lowercase()
-                if (f.isFile && (name.endsWith(".m3u") || name.endsWith(".m3u8"))) {
-                    m3uFiles.add(f)
-                }
-            }
-        }
-
-        Collections.sort(m3uFiles) { f1: File, f2: File ->
-            f1.name.compareTo(f2.name, ignoreCase = true)
-        }
-
+        val rows = ArrayList<RowSpec>()
         // iPod smart playlists first
         for (kind in PlayHistoryManager.Kind.values()) {
-            val label = smartPlaylistTitle(kind)
-            val btn = createListButtonWithIcon("\uE05F", label, null)
-            btn.setOnClickListener {
-                clickFeedback()
-                lastPlaylistFocusName = label
+            rows += RowSpec(smartPlaylistTitle(kind), onClick = {
                 (activity as? com.themoon.y1.MainActivity)?.changeScreen(ScreenState.SmartPlaylistSongs(kind))
-            }
-            containerBrowserItems.addView(btn)
+            })
         }
-
-        if (m3uFiles.isEmpty()) {
-            val btnEmpty = createListButtonWithIcon(
-                "\uE05F",
-                localize("No .m3u files found in Y1_Playlists"),
-                ThemeManager.getTextColorSecondary()
-            )
-            containerBrowserItems.addView(btnEmpty)
-        } else {
-            for (m3u in m3uFiles) {
-                val dotIdx = m3u.name.lastIndexOf(".")
-                val cleanName = if (dotIdx > 0) m3u.name.substring(0, dotIdx) else m3u.name
-                val btn = createListButtonWithIcon("\uE05F", cleanName, null)
-
-                btn.setOnClickListener {
-                    clickFeedback()
-                    currentM3uFile = m3u
-                    lastPlaylistFocusName = cleanName
-                    onPlaylistSelected(m3u)
-                }
-
-                btn.isLongClickable = true
-                btn.setOnLongClickListener {
-                    clickFeedback()
-                    showDeletePlaylistDialog(m3u)
-                    true
-                }
-
-                containerBrowserItems.addView(btn)
-            }
+        for (m3u in m3uFiles) {
+            rows += RowSpec(m3u.nameWithoutExtension, onClick = {
+                currentM3uFile = m3u
+                onPlaylistSelected(m3u)
+            }, onHold = { showDeletePlaylistDialog(m3u) })
         }
-
-        val sv = containerBrowserItems.parent as? ScrollView
-        sv?.viewTreeObserver?.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
-            override fun onGlobalLayout() {
-                if (Build.VERSION.SDK_INT >= 16) {
-                    sv.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                } else {
-                    sv.viewTreeObserver.removeGlobalOnLayoutListener(this)
-                }
-                if (containerBrowserItems.childCount > 0) {
-                    var targetIndex = 0
-                    if (lastPlaylistFocusName.isNotEmpty()) {
-                        for (i in 0 until containerBrowserItems.childCount) {
-                            val child = containerBrowserItems.getChildAt(i)
-                            var itemText = ""
-                            if (child is Button) {
-                                itemText = child.text.toString()
-                            } else if (child is LinearLayout && child.childCount > 1 && child.getChildAt(1) is TextView) {
-                                itemText = (child.getChildAt(1) as TextView).text.toString()
-                            }
-                            if (itemText == lastPlaylistFocusName) {
-                                targetIndex = i
-                                break
-                            }
-                        }
-                    }
-                    val target = containerBrowserItems.getChildAt(targetIndex)
-                    target?.requestFocus()
-                    if (sv != null && target != null) {
-                        val offset = (sv.height / 2) - (target.height / 2)
-                        val targetY = (target.top - offset).coerceAtLeast(0)
-                        sv.scrollTo(0, targetY)
-                    }
-                }
-            }
-        })
+        if (m3uFiles.isEmpty()) rows += RowSpec(localize("No .m3u files found in Y1_Playlists"), color = ThemeManager.getTextColorSecondary())
+        screen.show(ListSpec(localize("Playlists"), rows, focus = Focus.LAST))
     }
 
     fun buildM3uSongsUI(m3uFile: File) {
-        scrollViewBrowser?.visibility = View.GONE
-        listVirtualSongs?.visibility = View.VISIBLE
-
-        val dotIdx = m3uFile.name.lastIndexOf(".")
-        val playlistName = if (dotIdx > 0) m3uFile.name.substring(0, dotIdx) else m3uFile.name
-        tvBrowserPath.text = localize("Playlist") + ": " + playlistName
-
         val songs = parseM3uFile(m3uFile)
         val main = activity as? com.themoon.y1.MainActivity
         main?.virtualSongList?.clear()
         for (song in songs) {
             main?.virtualSongList?.add(song.file)
         }
-        val titles = ArrayList<String>()
-        for (song in songs) {
-            titles.add(song.title)
-        }
-
-        if (songs.isEmpty()) {
-            Toast.makeText(activity, localize("No valid tracks found in this playlist."), Toast.LENGTH_SHORT).show()
-        }
-
-        val adapter = SongListAdapter(songs)
-        listVirtualSongs?.adapter = adapter
-
-        listVirtualSongs?.post {
-            if (listVirtualSongs.childCount > 0) {
-                listVirtualSongs.getChildAt(0).requestFocus()
-            }
-        }
-
-        alphabetIndexBarHelper?.build(titles)
+        screen.show(ListSpec(localize("Playlist") + ": " + m3uFile.nameWithoutExtension, adapter = SongListAdapter(songs),
+            empty = localize("No Songs")))
     }
 
     private fun smartPlaylistTitle(kind: PlayHistoryManager.Kind): String = when (kind) {
@@ -252,33 +135,16 @@ class PlaylistController(
      * Rows are "title — artist". Not alphabetical, so no index bar. A song plays the list from that song.
      */
     fun buildSmartPlaylistUI(state: ScreenState.SmartPlaylistSongs) {
-        hzIndexScroll?.visibility = View.GONE
-        tvBrowserPath.text = smartPlaylistTitle(state.kind)
         // Empty until the list comes from the worker thread (a few ms)
-        listVirtualSongs?.visibility = View.GONE
-        scrollViewBrowser?.visibility = View.VISIBLE
-        containerBrowserItems.removeAllViews()
+        screen.show(ListSpec(smartPlaylistTitle(state.kind)))
         PlayHistoryManager.getInstance(activity).loadSongs(state.kind) { files ->
             val nav = com.themoon.y1.navigation.NavigationManager.getInstance()
-            if (nav.currentState == state) showSmartPlaylistSongs(files)
+            if (nav.currentState == state) showSmartPlaylistSongs(state, files)
         }
     }
 
-    private fun showSmartPlaylistSongs(files: List<File>) {
+    private fun showSmartPlaylistSongs(state: ScreenState.SmartPlaylistSongs, files: List<File>) {
         val main = activity as? com.themoon.y1.MainActivity
-        if (files.isEmpty()) {
-            listVirtualSongs?.visibility = View.GONE
-            scrollViewBrowser?.visibility = View.VISIBLE
-            containerBrowserItems.removeAllViews()
-            main?.virtualSongList?.clear()
-            val row = createListButtonWithIcon("\uE405", localize("No Songs"), ThemeManager.getTextColorSecondary())
-            containerBrowserItems.addView(row)
-            row.requestFocus()
-            return
-        }
-        scrollViewBrowser?.visibility = View.GONE
-        listVirtualSongs?.visibility = View.VISIBLE
-
         val byPath = HashMap<String, SongItem>()
         for (song in com.themoon.y1.MainActivity.customLibrary) byPath[song.file.absolutePath] = song
         val rows = ArrayList<SongItem>()
@@ -291,14 +157,7 @@ class PlaylistController(
         main?.virtualSongList?.clear()
         main?.virtualSongList?.addAll(files)
         main?.virtualListSelectedIndex = 0
-
-        listVirtualSongs?.adapter = SongListAdapter(rows)
-        listVirtualSongs?.setSelection(0)
-        listVirtualSongs?.post {
-            if (listVirtualSongs.childCount > 0) {
-                listVirtualSongs.getChildAt(0).requestFocus()
-            }
-        }
+        screen.show(ListSpec(smartPlaylistTitle(state.kind), adapter = SongListAdapter(rows), empty = localize("No Songs")))
     }
 
     fun parseM3uFile(m3uFile: File): List<SongItem> {
@@ -335,33 +194,31 @@ class PlaylistController(
     }
 
     fun showDeletePlaylistDialog(m3uFile: File) {
-        WheelDialog.show(activity) {
-            title = localize("Delete Playlist")
-            message = localize("Are you sure you want to delete this playlist?")
-            positiveButton(localize("Delete"), isDestructive = true) {
+        ActionScreens.open(ActionScreens.Spec(
+            localize("Delete Playlist"),
+            listOf(m3uFile.nameWithoutExtension, localize("Are you sure you want to delete this playlist?")),
+            listOf(ActionScreens.Action(localize("Delete")) {
                 if (m3uFile.exists() && m3uFile.delete()) {
-                    Toast.makeText(activity, localize("Playlist deleted."), Toast.LENGTH_SHORT).show()
+                    Notice.show(activity, localize("Playlist deleted."))
                     buildPlaylistsUI()
                 } else {
-                    Toast.makeText(activity, localize("Failed to delete playlist."), Toast.LENGTH_SHORT).show()
+                    Notice.error(activity, localize("Failed to delete playlist."))
                 }
-            }
-            negativeButton(localize("Cancel"))
-        }
+            })
+        ))
     }
 
     fun showRemoveFromPlaylistDialog(audioFile: File) {
         val currentM3u = currentM3uFile ?: return
-        WheelDialog.show(activity) {
-            title = localize("Remove from Playlist")
-            message = localize("Do you want to remove this track from the playlist?")
-            positiveButton(localize("Remove"), isDestructive = true) {
+        ActionScreens.open(ActionScreens.Spec(
+            localize("Remove from Playlist"),
+            listOf(audioFile.nameWithoutExtension, localize("Do you want to remove this track from the playlist?")),
+            listOf(ActionScreens.Action(localize("Remove")) {
                 removeSongFromM3uFile(currentM3u, audioFile)
                 buildM3uSongsUI(currentM3u)
-                Toast.makeText(activity, localize("Track removed."), Toast.LENGTH_SHORT).show()
-            }
-            negativeButton(localize("Cancel"))
-        }
+                Notice.show(activity, localize("Track removed."))
+            })
+        ))
     }
 
     fun showAddToPlaylistDialog(songFile: File) {
@@ -390,36 +247,34 @@ class PlaylistController(
             }
         }
 
-        WheelDialog.show(activity) {
-            title = localize("ADD TO PLAYLIST")
-            addButton(localize("On-The-Go"), icon = null) {
-                addSongToOnTheGo(songFile)
-            }
-            addButton(localize("Create New Playlist"), icon = "\uE145") {
-                var count = 1
-                var newPlaylistFile: File
-                do {
-                    newPlaylistFile = File(playlistDir, localize("Playlist ") + count + ".m3u8")
-                    count++
-                } while (newPlaylistFile.exists())
-
-                writeSongToM3uFile(newPlaylistFile, songFile, false)
-                Toast.makeText(
-                    activity,
-                    localize("Created Playlist ") + (count - 1) + " " + localize("successfully!"),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            for (targetM3u in playlistFiles) {
-                val dotIdx = targetM3u.name.lastIndexOf(".")
-                val cleanName = if (dotIdx > 0) targetM3u.name.substring(0, dotIdx) else targetM3u.name
-                addButton(cleanName, icon = "\uE05F") {
-                    writeSongToM3uFile(targetM3u, songFile, true)
-                    Toast.makeText(activity, localize("Added to playlist successfully!"), Toast.LENGTH_SHORT).show()
-                }
-            }
-            negativeButton(localize("Cancel"))
+        // A list of targets: On-The-Go, a new playlist, then each playlist. Back cancels.
+        val targets = ArrayList<ActionScreens.Action>()
+        targets += ActionScreens.Action(localize("On-The-Go")) {
+            addSongToOnTheGo(songFile)
         }
+        targets += ActionScreens.Action(localize("Create New Playlist")) {
+            var count = 1
+            var newPlaylistFile: File
+            do {
+                newPlaylistFile = File(playlistDir, localize("Playlist ") + count + ".m3u8")
+                count++
+            } while (newPlaylistFile.exists())
+
+            writeSongToM3uFile(newPlaylistFile, songFile, false)
+            Notice.show(
+                activity,
+                localize("Created Playlist ") + (count - 1) + " " + localize("successfully!")
+            )
+        }
+        for (targetM3u in playlistFiles) {
+            val dotIdx = targetM3u.name.lastIndexOf(".")
+            val cleanName = if (dotIdx > 0) targetM3u.name.substring(0, dotIdx) else targetM3u.name
+            targets += ActionScreens.Action(cleanName) {
+                writeSongToM3uFile(targetM3u, songFile, true)
+                Notice.show(activity, localize("Added to playlist successfully!"))
+            }
+        }
+        ActionScreens.open(ActionScreens.Spec(localize("Add to Playlist"), actions = targets))
     }
 
     fun addSongToOnTheGo(songFile: File) {
@@ -436,7 +291,7 @@ class PlaylistController(
             } catch (ignored: Exception) {}
         }
         writeSongToM3uFile(onTheGoFile, songFile, true)
-        Toast.makeText(activity, localize("Added to On-The-Go."), Toast.LENGTH_SHORT).show()
+        Notice.show(activity, localize("Added to On-The-Go."))
     }
 
     fun writeSongToM3uFile(m3uFile: File, songFile: File, append: Boolean) {
@@ -487,5 +342,4 @@ class PlaylistController(
             e.printStackTrace()
         }
     }
-
 }

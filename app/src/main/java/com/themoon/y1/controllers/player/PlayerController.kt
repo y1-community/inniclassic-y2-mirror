@@ -1,6 +1,7 @@
 package com.themoon.y1.controllers.player
 
 import android.app.Activity
+import com.themoon.y1.Prefs
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
@@ -332,12 +333,42 @@ class PlayerController(
         lyricsOverlayController.updateProgress(pos, dur, am.isPlaying())
     }
 
+    /**
+     * The volume row replaces the bottom row, as on the iPod classic (VolumeBar hides it again).
+     * [leftIcon] is the small speaker, or the Play On icon for a speaker. False if the row is not in the layout.
+     */
+    fun showVolume(level: Int, max: Int, leftIcon: Int): Boolean {
+        val bar = playerVolumeProgress ?: return false
+        bar.max = max
+        bar.progress = level
+        rootView.findViewById<ImageView>(R.id.tv_player_volume_down)?.let {
+            if (it.getTag(R.id.player_volume_progress) != leftIcon) {
+                it.setImageResource(leftIcon)
+                it.setTag(R.id.player_volume_progress, leftIcon)
+            }
+        }
+        if (!volumeShowing) {
+            volumeShowing = true
+            updateNowPlayingBottomBarState()
+        }
+        return true
+    }
+
+    fun hideVolume() {
+        if (!volumeShowing) return
+        volumeShowing = false
+        updateNowPlayingBottomBarState()
+    }
+
+    private var volumeShowing = false
+
     fun updateNowPlayingBottomBarState() {
-        rowPlayerVolume?.visibility = View.GONE
-        rowPlayerProgress?.visibility = if (nowPlayingBottomState == 0 || nowPlayingBottomState == LYRICS_STATE) View.VISIBLE else View.GONE
-        rowPlayerSeek?.visibility = if (nowPlayingBottomState == 1) View.VISIBLE else View.GONE
-        rowPlayerShuffleRepeat?.visibility = if (nowPlayingBottomState == 2) View.VISIBLE else View.GONE
-        rowPlayerRatingScrub?.visibility = if (nowPlayingBottomState == 3) View.VISIBLE else View.GONE
+        val state = if (volumeShowing) VOLUME_STATE else nowPlayingBottomState
+        rowPlayerVolume?.visibility = if (state == VOLUME_STATE) View.VISIBLE else View.GONE
+        rowPlayerProgress?.visibility = if (state == 0 || state == LYRICS_STATE) View.VISIBLE else View.GONE
+        rowPlayerSeek?.visibility = if (state == 1) View.VISIBLE else View.GONE
+        rowPlayerShuffleRepeat?.visibility = if (state == 2) View.VISIBLE else View.GONE
+        rowPlayerRatingScrub?.visibility = if (state == 3) View.VISIBLE else View.GONE
 
         val am = AudioPlayerManager.getInstance()
         when (nowPlayingBottomState) {
@@ -429,8 +460,8 @@ class PlayerController(
 
     private fun updateShuffleRepeatScrubLabels() {
         val prefs = playbackPrefs()
-        val isShuffle = prefs.getBoolean("shuffle", false)
-        val repeatMode = prefs.getInt("repeat_mode", 0)
+        val isShuffle = Prefs.SHUFFLE.get(prefs)
+        val repeatMode = Prefs.REPEAT_MODE.get(prefs)
 
         val repeatText = when (repeatMode) {
             1 -> localize("One")
@@ -481,19 +512,15 @@ class PlayerController(
     }
 
     private fun toggleShuffleMode() {
-        val prefs = playbackPrefs()
-        val isShuffle = !prefs.getBoolean("shuffle", false)
-        prefs.edit().putBoolean("shuffle", isShuffle).commit()
-        MainActivity.instance?.isShuffleMode = isShuffle
+        val isShuffle = Prefs.SHUFFLE.toggle(playbackPrefs())
         AudioPlayerManager.getInstance().setShuffleMode(isShuffle)
         updateShuffleRepeatStatusIcons()
     }
 
     private fun cycleRepeatMode() {
         val prefs = playbackPrefs()
-        val repeatMode = (prefs.getInt("repeat_mode", 0) + 1) % 3
-        prefs.edit().putInt("repeat_mode", repeatMode).commit()
-        MainActivity.instance?.repeatMode = repeatMode
+        val repeatMode = (Prefs.REPEAT_MODE.get(prefs) + 1) % 3
+        Prefs.REPEAT_MODE.set(prefs, repeatMode)
         AudioPlayerManager.getInstance().setRepeatMode(repeatMode)
         updateShuffleRepeatStatusIcons()
     }
@@ -503,8 +530,8 @@ class PlayerController(
 
     private fun updateShuffleRepeatStatusIcons() {
         val prefs = playbackPrefs()
-        val isShuffle = prefs.getBoolean("shuffle", false)
-        val repeatMode = prefs.getInt("repeat_mode", 0)
+        val isShuffle = Prefs.SHUFFLE.get(prefs)
+        val repeatMode = Prefs.REPEAT_MODE.get(prefs)
 
         ivPlayerShuffleStatus?.visibility = if (isShuffle) View.VISIBLE else View.GONE
         ivPlayerRepeatStatus?.visibility = if (repeatMode > 0) View.VISIBLE else View.GONE
@@ -521,7 +548,6 @@ class PlayerController(
         val songItem = MainActivity.customLibrary.firstOrNull { it.file.absolutePath == file.absolutePath }
 
         NowPlayingContextMenu.show(
-            activity = activity,
             songFile = file,
             songItem = songItem,
             isFavorite = isFav,
@@ -680,7 +706,7 @@ class PlayerController(
             }
             if ((event.flags and KeyEvent.FLAG_CANCELED_LONG_PRESS) == 0) {
                 val prefs = activity.getSharedPreferences("AppPrefs", Activity.MODE_PRIVATE)
-                if (!prefs.getBoolean("double_click_favorite", true)) {
+                if (!Prefs.DOUBLE_CLICK_FAVORITE.get(prefs)) {
                     // No double-click to wait for, so act on the single press at once.
                     doubleClickHandler.removeCallbacks(singleClickRunnable)
                     lastCenterUpTime = 0
@@ -759,6 +785,9 @@ class PlayerController(
 
     companion object {
         const val LYRICS_STATE = 4
+
+        /** The volume row, for a moment over any bottom state ([showVolume]); never a value of nowPlayingBottomState. */
+        const val VOLUME_STATE = -1
 
         /** Centre press order: Progress -> Lyrics (only if the track has lyrics) -> Scrub -> Shuffle/Repeat -> Rating. */
         fun nextBottomState(current: Int, hasLyrics: Boolean): Int = when (current) {

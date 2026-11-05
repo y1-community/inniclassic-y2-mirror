@@ -7,7 +7,6 @@ import android.net.wifi.WifiManager
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
@@ -24,10 +23,8 @@ import com.themoon.y1.controllers.playlists.PlaylistController
 import com.themoon.y1.controllers.podcasts.PodcastController
 import com.themoon.y1.controllers.quiz.MusicQuizController
 import com.themoon.y1.controllers.radio.FmRadioController
-import com.themoon.y1.controllers.settings.AppDrawerController
 import com.themoon.y1.controllers.settings.BrightnessController
 import com.themoon.y1.controllers.settings.EqualizerController
-import com.themoon.y1.controllers.settings.ScreenRecorderController
 import com.themoon.y1.views.ClassicMenuStyle
 import com.themoon.y1.controllers.settings.SettingsController
 import com.themoon.y1.controllers.storage.StorageController
@@ -42,30 +39,21 @@ import com.themoon.y1.navigation.BrowserMode
 import com.themoon.y1.navigation.KeyboardTarget
 import com.themoon.y1.navigation.NavigationManager
 import com.themoon.y1.navigation.ScreenState
+import com.themoon.y1.navigation.SettingsSubMode
 import com.themoon.y1.navigation.VideoMode
 import com.themoon.y1.podcasts.PodcastDownloadManager
 import com.themoon.y1.podcasts.PodcastRepository
 import com.themoon.y1.views.EdgeFadeListView
 import com.themoon.y1.views.ListItemViewFactory
+import com.themoon.y1.views.Notice
 
 internal fun MainActivity.initControllers() {
     val rootContent = findViewById<ViewGroup>(android.R.id.content)
     val containerBrowserItems = findViewById<LinearLayout>(R.id.container_browser_items)
     val tvBrowserPath = findViewById<TextView>(R.id.tv_browser_path)
 
-    val hzIndexScroll = HorizontalScrollView(this).apply {
-        isHorizontalScrollBarEnabled = false
-        visibility = View.GONE
-        setBackgroundColor(0x44000000.toInt())
-    }
-    val layoutIndexContainer = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        hzIndexScroll.addView(this)
-    }
-
     val listContainer = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        addView(hzIndexScroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (40 * resources.displayMetrics.density).toInt()))
     }
 
     val listVirtualSongs = object : EdgeFadeListView(this) {
@@ -123,12 +111,7 @@ internal fun MainActivity.initControllers() {
         activity = this,
         rootView = layoutBrowserMode as ViewGroup,
         listVirtualSongs = listVirtualSongs,
-        hzIndexScroll = hzIndexScroll,
-        layoutIndexContainer = layoutIndexContainer,
         clickFeedback = { clickFeedback() },
-        createListButtonWithIcon = { icon, text, color ->
-            createListButton(text, icon, color)
-        },
         onNavigateToScreen = { state ->
             changeScreen(state)
         },
@@ -170,13 +153,8 @@ internal fun MainActivity.initControllers() {
         activity = this,
         rootView = layoutBrowserMode as ViewGroup,
         listVirtualSongs = listVirtualSongs,
-        hzIndexScroll = hzIndexScroll,
-        layoutIndexContainer = layoutIndexContainer,
         musicRootFolder = rootFolder,
         isAudioFile = { MediaLibraryManager.getInstance().isAudioFile(it) },
-        createListButtonWithIcon = { icon, text, color ->
-            createListButton(text, icon, color)
-        },
         clickFeedback = { clickFeedback() },
         onPlaylistSelected = { file ->
             changeScreen(ScreenState.M3uPlaylistSongs(file))
@@ -191,10 +169,7 @@ internal fun MainActivity.initControllers() {
         uniqueAlbumList = uniqueAlbumList,
         clickFeedback = { clickFeedback() },
         onAlbumSelected = { album ->
-            browserController.virtualQueryType = "COVER_FLOW_ALBUM"
-            browserController.virtualQueryValue = album.album
-            browserController.virtualQueryAlbumArtist = AlbumKey.artistOf(album)
-            changeScreen(ScreenState.Browser(BrowserMode.VirtualSongs))
+            changeScreen(ScreenState.Browser(BrowserMode.Songs("COVER_FLOW_ALBUM", album.album, AlbumKey.artistOf(album))))
         },
         onRebuildUniqueAlbumList = { rebuildUniqueAlbumListInternal() },
         nowPlayingSong = {
@@ -213,20 +188,14 @@ internal fun MainActivity.initControllers() {
         onTogglePlayback = { com.themoon.y1.managers.AudioSources.app.playPauseKey() },
         onNavigateBack = { NavigationManager.getInstance().popBackStack() },
         onBrowseAlbum = { album ->
-            changeScreen(MainActivity.STATE_BROWSER)
-            browserController.virtualQueryType = "ALBUM"
-            browserController.virtualQueryValue = album
             // The menu gives only the title; take the album artist from the song that plays.
             val playingPath = currentPlaylist.getOrNull(currentIndex)?.absolutePath
             val playingSong = MainActivity.customLibrary.firstOrNull { it.file.absolutePath == playingPath }
-            browserController.virtualQueryAlbumArtist = playingSong?.let { AlbumKey.artistOf(it) } ?: ""
-            browserController.buildVirtualSongs()
+            val albumArtist = playingSong?.let { AlbumKey.artistOf(it) } ?: ""
+            changeScreen(ScreenState.Browser(BrowserMode.Songs("ALBUM", album, albumArtist)))
         },
         onBrowseArtist = { artist ->
-            changeScreen(MainActivity.STATE_BROWSER)
-            browserController.virtualQueryType = "ARTIST"
-            browserController.virtualQueryValue = artist
-            browserController.buildVirtualSongs()
+            changeScreen(ScreenState.Browser(BrowserMode.Songs("ARTIST", artist)))
         },
         onToggleFavorite = { toggleFavorite() },
         onAddToOnTheGo = { playlistController.addSongToOnTheGo(it) },
@@ -239,13 +208,11 @@ internal fun MainActivity.initControllers() {
         activity = this,
         rootView = layoutSettingsMode as ViewGroup,
         eqPresetNames = eqPresetNames,
-        createSettingRow = { title, value -> ListItemViewFactory.createSettingRow(this, title, value) },
         createCategoryHeader = { title ->
             val container = findViewById<LinearLayout>(R.id.container_settings_items)
             if (container != null) ListItemViewFactory.createCategoryHeader(this, container, title)
         },
         createListButton = { icon, text -> createListButton(text, icon) },
-        createListButtonWithColor = { icon, text, color -> createListButton(text, icon, color) },
         clickFeedback = { clickFeedback() },
         rebootAudioEngine = { rebootAudioEngine() },
         onNavigateBack = { NavigationManager.getInstance().popBackStack() },
@@ -255,19 +222,12 @@ internal fun MainActivity.initControllers() {
     fmRadioController = FmRadioController(
         activity = this,
         rootView = layoutSettingsMode as ViewGroup,
-        createSettingRow = { title, value -> ListItemViewFactory.createSettingRow(this, title, value) },
-        createCategoryHeader = { title ->
-            val container = findViewById<LinearLayout>(R.id.container_settings_items)
-            if (container != null) ListItemViewFactory.createCategoryHeader(this, container, title)
-        },
-        createListButton = { text -> ListItemViewFactory.createListButtonSimple(this, text) },
-        createListButtonWithIcon = { icon, text -> createListButton(text, icon) },
         clickFeedback = { clickFeedback() },
         updateGlobalStatusPlayIcon = { updatePlayerUI() },
         onExitRadio = { NavigationManager.getInstance().popBackStack() },
         showLoadingPopup = { showLoadingPopup() },
         dismissLoadingOverlay = { dismissLoadingOverlay() },
-        updateLoadingProgress = { _, _ -> },
+        updateLoadingProgress = { progress, message -> updateLoadingProgress(progress, message) },
         localize = { t(it) }
     )
 
@@ -276,29 +236,16 @@ internal fun MainActivity.initControllers() {
         rootView = layoutBrowserMode as ViewGroup,
         containerBrowserItems = containerBrowserItems,
         listVirtualSongs = listVirtualSongs,
-        tvBrowserPath = tvBrowserPath,
         repository = PodcastRepository.getInstance(),
         downloadManager = PodcastDownloadManager.getInstance(),
         onRequestSearch = {
             changeScreen(ScreenState.WifiKeyboard(KeyboardTarget.PodcastSearch))
         },
         onNavigateToPlayer = { changeScreen(MainActivity.STATE_PLAYER) },
-        createListButton = { icon, text, color -> createListButton(text, icon, color) },
-        createTablerButton = { icon, text, textColor, iconColor ->
-            ListItemViewFactory.createTablerListButtonWithRightIcon(
-                context = this,
-                iconPaths = icon,
-                text = text,
-                rightIconPaths = null,
-                iconColor = iconColor,
-                textColor = textColor
-            )
-        },
         clickFeedback = { clickFeedback() },
         localize = { t(it) },
         showLoadingPopup = { showLoadingPopup() },
-        onHideLoadingPopup = { dismissLoadingOverlay() },
-        onExitPodcasts = { NavigationManager.getInstance().popBackStack() }
+        onHideLoadingPopup = { dismissLoadingOverlay() }
     )
 
     musicQuizController = MusicQuizController(
@@ -341,17 +288,6 @@ internal fun MainActivity.initControllers() {
     bluetoothController = BluetoothController(
         activity = this,
         rootView = layoutBluetoothMode as ViewGroup,
-        createSettingRow = { title, value -> ListItemViewFactory.createSettingRow(this, title, value) },
-        createTablerListButton = { iconPaths, text, rightIconPaths, iconColor, textColor ->
-            ListItemViewFactory.createTablerListButtonWithRightIcon(
-                context = this,
-                iconPaths = iconPaths,
-                text = text,
-                rightIconPaths = rightIconPaths,
-                iconColor = iconColor,
-                textColor = textColor
-            )
-        },
         clickFeedback = { clickFeedback() },
         localize = { t(it) }
     )
@@ -359,17 +295,6 @@ internal fun MainActivity.initControllers() {
     wifiController = WifiController(
         activity = this,
         rootView = layoutWifiMode as ViewGroup,
-        createSettingRow = { title, value -> ListItemViewFactory.createSettingRow(this, title, value) },
-        createTablerListButton = { iconPaths, text, rightIconPaths, iconColor, textColor ->
-            ListItemViewFactory.createTablerListButtonWithRightIcon(
-                context = this,
-                iconPaths = iconPaths,
-                text = text,
-                rightIconPaths = rightIconPaths,
-                iconColor = iconColor,
-                textColor = textColor
-            )
-        },
         clickFeedback = { clickFeedback() },
         onConnectToSavedNetwork = { _, _ -> },
         onOpenWifiKeyboard = { ssid, isOpen ->
@@ -390,16 +315,14 @@ internal fun MainActivity.initControllers() {
             podcastController.searchApplePodcasts(keyword)
         },
         onSubmitSearchLibrary = { keyword ->
-            NavigationManager.getInstance().popBackStack()
-            browserController.virtualQueryType = "SEARCH"
-            browserController.virtualQueryValue = keyword
-            browserController.buildVirtualSongs()
+            // The result list takes the place of the keyboard: Back goes to the Music menu, on Search
+            NavigationManager.getInstance().navigateTo(ScreenState.Browser(BrowserMode.Songs("SEARCH", keyword)), addToBackStack = false)
         },
         onSubmitLastFmUsername = { username ->
-            prefs.edit().putString("lastfm_username", username).apply()
+            prefs.edit().putString(Prefs.LASTFM_USERNAME.key, username).apply()
         },
         onSubmitLastFmPassword = { password ->
-            prefs.edit().putString("lastfm_password", password).apply()
+            prefs.edit().putString(Prefs.LASTFM_PASSWORD.key, password).apply()
             NavigationManager.getInstance().popBackStack()
         },
         onSubmitJellyfinServerUrl = { url ->
@@ -471,7 +394,6 @@ internal fun MainActivity.initControllers() {
         rootView = layoutStorageMode as ViewGroup,
         songsProvider = { MainActivity.customLibrary },
         videosProvider = { videoFiles },
-        createSettingRow = { title, value -> ListItemViewFactory.createSettingRow(this, title, value) },
         clickFeedback = { clickFeedback() },
         localize = { t(it) }
     )
@@ -485,15 +407,6 @@ internal fun MainActivity.initControllers() {
     jellyfinUiController = JellyfinUiController(
         activity = this,
         rootView = layoutSettingsMode as ViewGroup,
-        createSettingRow = { title, value -> ListItemViewFactory.createSettingRow(this, title, value) },
-        createCategoryHeader = { title ->
-            val container = findViewById<LinearLayout>(R.id.container_settings_items)
-            if (container != null) ListItemViewFactory.createCategoryHeader(this, container, title)
-        },
-        createTablerButton = { icon, text ->
-            ListItemViewFactory.createTablerListButton(this, icon, text, ThemeManager.getTextColorPrimary(), ThemeManager.getListButtonFocusedTextColor())
-        },
-        createDialogButton = { text -> ListItemViewFactory.createDialogButton(this, text) },
         clickFeedback = { clickFeedback() },
         onOpenKeyboard = { target ->
             changeScreen(ScreenState.WifiKeyboard(target))
@@ -530,11 +443,6 @@ internal fun MainActivity.initControllers() {
         rootView = layoutSettingsMode as ViewGroup,
         eqPresetNames = eqPresetNames,
         createSettingRow = { title, value -> ListItemViewFactory.createSettingRow(this, title, value) },
-        createCategoryHeader = { title ->
-            val container = findViewById<LinearLayout>(R.id.container_settings_items)
-            if (container != null) ListItemViewFactory.createCategoryHeader(this, container, title)
-        },
-        createListButton = { text -> ListItemViewFactory.createListButtonSimple(this, text) },
         createTablerListButton = { icon, text, normalColor, focusedColor ->
             // Settings makes rows with a tick or with no icon only for single-choice lists (Language, Theme...):
             // keep a tick column on each row, so the text does not move, and the normal colours (no green).
@@ -547,7 +455,6 @@ internal fun MainActivity.initControllers() {
         clickFeedback = { clickFeedback() },
         onNavigateBack = { NavigationManager.getInstance().popBackStack() },
         onNavigateToScreen = { screenId ->
-            backTargetForUtility = MainActivity.STATE_SETTINGS
             if (screenId == MainActivity.STATE_WIFI_KEYBOARD) {
                 // Settings opens the keyboard only from the Last.fm Account row
                 changeScreen(ScreenState.WifiKeyboard(KeyboardTarget.LastFmUsername))
@@ -556,7 +463,7 @@ internal fun MainActivity.initControllers() {
             }
         },
         onOpenEqualizer = { changeScreen(ScreenState.Equalizer) },
-        onOpenJellyfin = { changeScreen(ScreenState.Jellyfin) },
+        onOpenJellyfin = { changeScreen(ScreenState.Jellyfin()) },
         onOpenUpdateCheck = { otaUpdateManager?.checkForUpdates() },
         onClearCacheConfirmed = {
             MediaLibraryManager.getInstance().musicLibrary.clear()
@@ -564,62 +471,33 @@ internal fun MainActivity.initControllers() {
             startMediaLibraryScan()
         },
         onApplyThemeBackground = {
-            prefs.edit().putString("bg_path", "THEME_DEFAULT").apply()
+            prefs.edit().putString(Prefs.BACKGROUND.key, "THEME_DEFAULT").apply()
             updateMainMenuBackground()
         },
         onClearCustomBackground = {
-            prefs.edit().remove("bg_path").apply()
+            prefs.edit().remove(Prefs.BACKGROUND.key).apply()
             updateMainMenuBackground()
         },
         onPickBackgroundFromStorage = {
-            changeScreen(MainActivity.STATE_BROWSER)
-            browserController.isPickingBackground = true
-            browserController.buildFolderBrowserUI()
+            changeScreen(ScreenState.Browser(BrowserMode.Folder(StoragePaths.getPrimaryRoot(), pickImage = true)))
         },
         resetBacklightTimer = { powerBacklightManager?.applyBacklightSetting() },
         applySoundSetting = {
-            isSoundEffectEnabled = prefs.getBoolean("sound", true)
             updateScreenOffFeedback(true)
         },
         applyAlbumTiltSetting = {
-            isAlbumTiltEnabled = com.themoon.y1.controllers.player.AlbumTiltSetting.isEnabled(prefs)
             playerController.applyAlbumTiltSetting()
         },
-        toggleShuffleMode = {
-            isShuffleMode = !isShuffleMode
-            prefs.edit().putBoolean("shuffle", isShuffleMode).apply()
-            AudioPlayerManager.getInstance().setShuffleMode(isShuffleMode)
+        setShuffle = { on ->
+            Prefs.SHUFFLE.setAsync(prefs, on)
+            AudioPlayerManager.getInstance().setShuffleMode(on)
             updatePlayerUI()
         },
-        cycleRepeatMode = {
-            repeatMode = (repeatMode + 1) % 3
-            prefs.edit().putInt("repeat_mode", repeatMode).apply()
-            AudioPlayerManager.getInstance().setRepeatMode(repeatMode)
+        setRepeatMode = { mode ->
+            Prefs.REPEAT_MODE.setAsync(prefs, mode)
+            AudioPlayerManager.getInstance().setRepeatMode(mode)
             updatePlayerUI()
         },
-        getRepeatModeText = { mode ->
-            when (mode) {
-                1 -> t("One")
-                2 -> t("All")
-                else -> t("Off")
-            }
-        },
-        localize = { t(it) }
-    )
-
-    appDrawerController = AppDrawerController(
-        activity = this,
-        rootView = layoutSettingsMode as ViewGroup,
-        createListButton = { text -> ListItemViewFactory.createListButtonSimple(this, text) },
-        clickFeedback = { clickFeedback() },
-        localize = { t(it) }
-    )
-
-    screenRecorderController = ScreenRecorderController(
-        activity = this,
-        rootView = layoutSettingsMode as ViewGroup,
-        createSettingRow = { title, value -> ListItemViewFactory.createSettingRow(this, title, value) },
-        clickFeedback = { clickFeedback() },
         localize = { t(it) }
     )
 
@@ -637,6 +515,8 @@ internal fun MainActivity.initControllers() {
         registerController(ScreenState.Settings::class.java, settingsController)
         registerController(ScreenState.Equalizer::class.java, equalizerController)
         registerController(ScreenState.FmRadio::class.java, fmRadioController)
+        registerController(ScreenState.FmRadioMenu::class.java, fmRadioController)
+        registerController(ScreenState.FmRadioSaved::class.java, fmRadioController)
         registerController(ScreenState.Jellyfin::class.java, jellyfinUiController)
         registerController(ScreenState.Bluetooth::class.java, bluetoothController)
         registerController(ScreenState.Wifi::class.java, wifiController)
@@ -654,24 +534,19 @@ internal fun MainActivity.initControllers() {
 internal fun MainActivity.shuffleAllSongs() {
     val tracks = MainActivity.customLibrary.map { it.file }
     if (tracks.isEmpty()) {
-        android.widget.Toast.makeText(this, t("No playable audio files found."), android.widget.Toast.LENGTH_SHORT).show()
+        Notice.show(this, t("No playable audio files found."))
         return
     }
-    isShuffleMode = true
-    prefs.edit().putBoolean("shuffle", true).apply()
+    Prefs.SHUFFLE.setAsync(prefs, true)
     AudioPlayerManager.getInstance().playTrackList(tracks, tracks.indices.random())
     changeScreen(MainActivity.STATE_PLAYER)
 }
 
 internal fun MainActivity.handleMainMenuAction(action: String) {
-    backTargetForUtility = MainActivity.STATE_MENU
     when (action) {
         "OPEN_BROWSER", "MUSIC" -> {
-            browserController.isAudiobookLibraryMode = false
             this.isAudiobookLibraryMode = false
-            browserController.currentBrowserMode = BrowserMode.Root
-            changeScreen(MainActivity.STATE_BROWSER)
-            browserController.buildFileBrowserUI()
+            changeScreen(ScreenState.Browser(BrowserMode.Root))
         }
         "OPEN_VIDEOS", "VIDEOS" -> {
             changeScreen(ScreenState.Videos(VideoMode.Root))
@@ -688,7 +563,6 @@ internal fun MainActivity.handleMainMenuAction(action: String) {
         }
         "OPEN_SETTINGS", "SETTINGS" -> {
             changeScreen(MainActivity.STATE_SETTINGS)
-            settingsController.buildSettingsUI()
         }
         "OPEN_RADIO", "RADIO" -> {
             changeScreen(ScreenState.FmRadio)
@@ -703,19 +577,15 @@ internal fun MainActivity.handleMainMenuAction(action: String) {
             changeScreen(MainActivity.STATE_WIFI)
         }
         "OPEN_AUDIOBOOKS" -> {
-            browserController.isAudiobookLibraryMode = true
             this.isAudiobookLibraryMode = true
-            browserController.currentBrowserMode = BrowserMode.Audiobooks
-            changeScreen(ScreenState.Browser(BrowserMode.Audiobooks))
-            browserController.buildFileBrowserUI()
+            changeScreen(ScreenState.Browser(BrowserMode.Audiobooks, audiobooks = true))
         }
         "OPEN_THEME_SETTINGS" -> {
-            changeScreen(MainActivity.STATE_SETTINGS)
-            settingsController.buildThemeSelectorUI()
+            changeScreen(ScreenState.Settings(SettingsSubMode.Page("Theme")))
         }
         "OPEN_PLAYER" -> {
             if (currentPlaylist.isEmpty()) {
-                android.widget.Toast.makeText(this@handleMainMenuAction, t("No music is currently playing."), android.widget.Toast.LENGTH_SHORT).show()
+                Notice.show(this@handleMainMenuAction, t("No music is currently playing."))
             } else {
                 changeScreen(MainActivity.STATE_PLAYER)
             }

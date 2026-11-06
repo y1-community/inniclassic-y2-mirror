@@ -117,6 +117,64 @@ internal fun MainActivity.isLightStatusBar(): Boolean {
 internal fun MainActivity.updateStatusBarWifi(isConnected: Boolean) {
     // Not connected: the same icon, empty.
     setStatusBarIcon(ivStatusWifi ?: return, com.themoon.y1.views.StatusIcons.Icon.WIFI, isConnected, 6)
+    // While a speaker plays, the Play On icon shows in its place (it needs the Wi-Fi)
+    if (com.themoon.y1.cast.CastManager.isActive) ivStatusWifi?.visibility = android.view.View.GONE
+}
+
+/** The Wi-Fi icon while the Wi-Fi is on: full when connected to a network, else empty. */
+internal fun MainActivity.refreshStatusBarWifi() {
+    val wm = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as? android.net.wifi.WifiManager ?: return
+    if (!wm.isWifiEnabled) return
+    ivStatusWifi?.visibility = android.view.View.VISIBLE
+    updateStatusBarWifi(wm.connectionInfo?.let { it.networkId != -1 } == true)
+}
+
+/**
+ * Play On: while a speaker plays, its icon in the place of the Wi-Fi icon and the speaker name under "1 of N" on
+ * Now Playing. When it stops, the Wi-Fi icon shows again. Also refreshes the Wi-Fi icon.
+ */
+internal fun MainActivity.updateStatusBarPlayOn() {
+    val device = com.themoon.y1.cast.CastManager.device
+    ivStatusPlayOn?.let { iv ->
+        if (device != null) {
+            setStatusBarIcon(iv, com.themoon.y1.views.StatusIcons.Icon.PLAY_ON, true, 6)
+            iv.visibility = android.view.View.VISIBLE
+        } else {
+            iv.visibility = android.view.View.GONE
+        }
+    }
+    refreshStatusBarWifi()
+    findViewById<android.widget.TextView>(R.id.tv_player_play_on)?.let { tv ->
+        if (device == null) {
+            tv.visibility = android.view.View.GONE
+            return@let
+        }
+        tv.text = device.name
+        tv.visibility = android.view.View.VISIBLE
+        // After the Classic layout has set the font of the line
+        tv.post { setPlayOnLineIcon(tv) }
+    }
+}
+
+/**
+ * The icon of the Play On line: as tall as the cap height and a half, its centre on the centre of the cap height
+ * (the rule of the Bluetooth list and the low-battery banner). TextView centres a left drawable on the line box
+ * (ascent to descent), so the bounds move it by the difference.
+ */
+private fun MainActivity.setPlayOnLineIcon(tv: android.widget.TextView) {
+    val caps = android.graphics.Rect()
+    tv.paint.getTextBounds("H", 0, 1, caps)
+    val capHeight = caps.height().toFloat()
+    val fm = tv.paint.fontMetrics
+    val size = Math.round(capHeight * 1.5f)
+    // Centres, from the baseline (y down): the cap height at -capHeight / 2, the line box at (ascent + descent) / 2
+    val shift = Math.round(-capHeight / 2f - (fm.ascent + fm.descent) / 2f)
+    val icon = resources.getDrawable(R.drawable.ic_play_on).mutate()
+    icon.setBounds(0, shift, size, size + shift)
+    icon.setColorFilter(tv.currentTextColor, android.graphics.PorterDuff.Mode.SRC_IN)
+    tv.setCompoundDrawables(icon, null, null, null)
+    // The icon goes 1-2 px above the line box: the text column must not cut it
+    (tv.parent as? android.view.ViewGroup)?.clipChildren = false
 }
 
 /** The rune; with an audio device connected, the rune with a dot on each side. */
@@ -193,15 +251,15 @@ private fun MainActivity.setStatusBarIcon(
     connected: Boolean = false
 ) {
     val d = resources.displayMetrics.density
-    val ipod = com.themoon.y1.views.IpodClassicLayout.isActive
+    val ipod = com.themoon.y1.views.ClassyLayout.isActive
     val heightPx = if (ipod) {
-        com.themoon.y1.views.IpodClassicLayout.px(com.themoon.y1.views.IpodClassicMetrics.STATUS_ROUND_ICON_HEIGHT, d)
+        com.themoon.y1.views.ClassyLayout.px(com.themoon.y1.views.ClassyMetrics.STATUS_ROUND_ICON_HEIGHT, d)
     } else {
-        com.themoon.y1.views.IpodClassicLayout.px(16, d)
+        com.themoon.y1.views.ClassyLayout.px(16, d)
     }
     // The gradient spans the status item box (the cap height), as in the play/pause icon.
     val boxPx = if (ipod) {
-        com.themoon.y1.views.IpodClassicLayout.px(com.themoon.y1.views.IpodClassicMetrics.STATUS_ICON_HEIGHT, d)
+        com.themoon.y1.views.ClassyLayout.px(com.themoon.y1.views.ClassyMetrics.STATUS_ICON_HEIGHT, d)
     } else {
         heightPx
     }
@@ -211,7 +269,7 @@ private fun MainActivity.setStatusBarIcon(
     iv.setImageBitmap(bmp)
 
     val lp = iv.layoutParams as? android.widget.LinearLayout.LayoutParams ?: return
-    val bottom = if (ipod) com.themoon.y1.views.IpodClassicLayout.px(com.themoon.y1.views.IpodClassicMetrics.STATUS_BAR_RULE, d) else 0
+    val bottom = if (ipod) com.themoon.y1.views.ClassyLayout.px(com.themoon.y1.views.ClassyMetrics.STATUS_BAR_RULE, d) else 0
     if (ipod) {
         // The optical bearings of the new bitmap; updateStatusItemGaps() sets the right margin.
         val sideDots = icon == com.themoon.y1.views.StatusIcons.Icon.BLUETOOTH && connected
@@ -223,7 +281,7 @@ private fun MainActivity.setStatusBarIcon(
         )
     } else {
         statusBearings.remove(iv)
-        lp.rightMargin = com.themoon.y1.views.IpodClassicLayout.px(rightMarginDp, d)
+        lp.rightMargin = com.themoon.y1.views.ClassyLayout.px(rightMarginDp, d)
     }
     if (lp.width != bmp.width || lp.height != bmp.height || lp.bottomMargin != bottom ||
         lp.gravity != android.view.Gravity.CENTER_VERTICAL
@@ -242,13 +300,13 @@ private val statusBearings = java.util.WeakHashMap<android.view.View, FloatArray
 private val statusGapListeners = java.util.WeakHashMap<android.view.View, Boolean>()
 
 /**
- * Classic themes (iPod Classic layout): sets the gap after each visible status item (icons, play/pause) to the next visible one, from
+ * Classic themes (Classy layout): sets the gap after each visible status item (icons, play/pause) to the next visible one, from
  * their optical bearings (StatusSpacing), so the spaces look equal. Items without bearings (play/pause, battery) are
  * flat: 8 px. The gap from the battery to the clock is the text's own. A layout listener on the group runs it again
  * when an item shows or hides; it changes the margins only when they are different, so it stops after one pass.
  */
 internal fun MainActivity.updateStatusItemGaps() {
-    if (!com.themoon.y1.views.IpodClassicLayout.isActive) return
+    if (!com.themoon.y1.views.ClassyLayout.isActive) return
     val battery = batteryIconView ?: return
     val group = battery.parent as? android.view.ViewGroup ?: return
     if (statusGapListeners[group] == null) {
@@ -273,7 +331,7 @@ internal fun MainActivity.updateStatusItemGaps() {
         val next = if (j < end) group.getChildAt(j) else battery
         val right = statusBearings[v]?.get(1) ?: 0f
         val left = statusBearings[next]?.get(0) ?: 0f
-        val gap = com.themoon.y1.views.IpodClassicLayout.px(com.themoon.y1.views.StatusSpacing.gap(right / d, left / d), d)
+        val gap = com.themoon.y1.views.ClassyLayout.px(com.themoon.y1.views.StatusSpacing.gap(right / d, left / d), d)
         val lp = v.layoutParams as? android.view.ViewGroup.MarginLayoutParams
         if (lp != null && lp.rightMargin != gap) {
             lp.rightMargin = gap
@@ -352,15 +410,8 @@ internal fun MainActivity.applyThemeInternal() {
 
         updateStatusBarBluetooth()
         updateStatusBarHeadphone()
-
-        val wm = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
-        if (wm != null && wm.isWifiEnabled) {
-            val info = wm.connectionInfo
-            val isConnected = info != null && info.networkId != -1
-            updateStatusBarWifi(isConnected)
-        } else {
-            updateStatusBarWifi(false)
-        }
+        // Also the Wi-Fi icon
+        updateStatusBarPlayOn()
 
         try {
             (layoutSettingsMode as? android.view.ViewGroup)?.let { vg ->
@@ -442,7 +493,7 @@ internal fun MainActivity.applyThemeInternal() {
             }
         }
 
-        com.themoon.y1.views.IpodClassicLayout.apply(this)
+        com.themoon.y1.views.ClassyLayout.apply(this)
     } catch (_: Exception) {}
 }
 

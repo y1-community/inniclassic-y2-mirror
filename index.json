@@ -1,8 +1,11 @@
 {
   "schema": 1,
-  "generated_at": "2026-11-11T01:27:57Z",
+  "generated_at": "2026-11-11T22:14:45Z",
   "source_repo": "JonaszPotoniec/inniclassic-y2",
+  "source_fallback_repo": "",
   "mirror_repo": "y1-community/inniclassic-y2-mirror",
+  "mirror_fallback_repo": "ryan-specter/inniclassic-y2-mirror",
+  "fallback_index_url": "https://raw.githubusercontent.com/ryan-specter/inniclassic-y2-mirror/main/index.json",
   "title_prefix": "Portable Flashing Package: ",
   "updater_repo": "y1-community/updater-ce-neo",
   "platforms": [
@@ -48,6 +51,162 @@
     }
   ],
   "releases": [
+    {
+      "tag": "20261105",
+      "title": "Portable Flashing Package: InniClassic 20261105",
+      "source_title": "InniClassic 20261105",
+      "source_url": "https://github.com/JonaszPotoniec/inniclassic-y2/releases/tag/20261105",
+      "source_fallback_url": "",
+      "published_at": "2026-11-06T16:00:30Z",
+      "prerelease": false,
+      "source_notes": "> **Final InniClassic release.** Development continues as **Classy** at [ClassyPlayer/Classy](https://github.com/ClassyPlayer/Classy). This fork is kept as the OTA endpoint for devices running the InniClassic builds, and as an archive of the last release published under that name.\n>\n> Mirror of [20261105 on ClassyPlayer/Classy](https://github.com/ClassyPlayer/Classy/releases/tag/20261105). Only the launcher APK and the OTA metadata are copied here; the flashable ROMs (~2.1 GB) stay on the Classy repository.\n\n### InniClassic Release\n\nAutomated build with full support for **Innioasis Y1** (Type A & Type B) and **Innioasis Y2**.\n\n#### \ud83d\udce6 Release Assets\n\n| File | Target Device | Notes |\n| :--- | :--- | :--- |\n| **`InniClassic-20261105.apk`** | All Devices (Y1 / Y2) | Standalone launcher APK (sideload or install) |\n| **`update.json`** | All Devices | OTA update metadata for in-app updater |\n| **`SHA256SUMS.txt`** | All Files | SHA-256 integrity checksums |\n\nThe flashable ROMs are **not** mirrored here \u2014 download them from [ClassyPlayer/Classy 20261105](https://github.com/ClassyPlayer/Classy/releases/tag/20261105):\n\n| File | Target Device | Notes |\n| :--- | :--- | :--- |\n| **`rom_y2.zip`** | **Innioasis Y2** (MT6582) | Complete flashable ROM with dual-storage, watchdog & clickwheel keylayout |\n| **`rom_y1_type_a.zip`** (`rom.zip`) | **Innioasis Y1** (Type A) | Flashable ROM for Y1 players with original firmware **2.0.0 or higher** |\n| **`rom_y1_type_b.zip`** (`rom_type_b.zip`) | **Innioasis Y1** (Type B) | Flashable ROM for Y1 players with original firmware **below 2.0.0** |\n\n#### \u26a1 Flashing Instructions (SP Flash Tool)\n1. Extract the corresponding zip file for your device.\n2. Launch `flash_tool.exe` (or Linux `flash_tool`).\n3. Load the scatter file (`MT6582_Android_scatter.txt` for Y2, `MT6572_Android_scatter.txt` for Y1).\n4. Select **Firmware Upgrade** or **Download Only**.\n5. Power off the device completely, click **Download**, and connect the USB cable.\n\n---\n\n\n## What's Changed\n* fix(battery): show the battery level from the voltage on the Y2, warn at 10 % and 3 %, and shut down before the cut-off by @ferrolho in https://github.com/ClassyPlayer/Classy/pull/41\n* feat(navigation): navigate like the iPod: one back stack, menu slides, and list screens in place of dialogs by @ferrolho in https://github.com/ClassyPlayer/Classy/pull/42\n* refactor(ui): remove the App Drawer and Screen Recorder screens, which nothing can open by @ferrolho in https://github.com/ClassyPlayer/Classy/pull/44\n\n\n**Full Changelog**: https://github.com/ClassyPlayer/Classy/compare/20261104...20261105\n",
+      "assets": [
+        {
+          "name": "rom-linux.zip",
+          "source_asset": "rom.zip",
+          "platform": "linux",
+          "model": "Y1",
+          "type": "Type A",
+          "size": 814661518,
+          "sha256": "7c5a0d936f9e66f13f5c3263ce0b9fe71c97a49a2c738452b1e766f2c2896d10",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom-linux.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom-linux.zip"
+        },
+        {
+          "name": "rom-linux-arm64.zip",
+          "source_asset": "rom.zip",
+          "platform": "linux-arm64",
+          "model": "Y1",
+          "type": "Type A",
+          "size": 639566460,
+          "sha256": "7d05584f3b236cd44efaa0d165621ac899db8fd272493b490b7181a4baf8ac69",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom-linux-arm64.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom-linux-arm64.zip"
+        },
+        {
+          "name": "rom-macos.zip",
+          "source_asset": "rom.zip",
+          "platform": "macos",
+          "model": "Y1",
+          "type": "Type A",
+          "size": 574588492,
+          "sha256": "97e61758e4618cb4ef92061ce45b74254f7b866a37b144c260ec578f32496a76",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom-macos.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom-macos.zip"
+        },
+        {
+          "name": "rom-windows.zip",
+          "source_asset": "rom.zip",
+          "platform": "windows",
+          "model": "Y1",
+          "type": "Type A",
+          "size": 660541164,
+          "sha256": "5880de62230f263a1dbd624e41b028e3384cf18a4d35bafcba7607ffba70c423",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom-windows.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom-windows.zip"
+        },
+        {
+          "name": "rom_type_b-linux.zip",
+          "source_asset": "rom_type_b.zip",
+          "platform": "linux",
+          "model": "Y1",
+          "type": "Type B",
+          "size": 781821591,
+          "sha256": "2fee44524f8737ea060ec8e7926ba3dbde7b6f23a9fed9ed3e12bf83ab56a729",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom_type_b-linux.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom_type_b-linux.zip"
+        },
+        {
+          "name": "rom_type_b-linux-arm64.zip",
+          "source_asset": "rom_type_b.zip",
+          "platform": "linux-arm64",
+          "model": "Y1",
+          "type": "Type B",
+          "size": 606726533,
+          "sha256": "c8141ebd805439a1d13b695646b4e56e6dec4f283178bc4f47d76bebe42d492c",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom_type_b-linux-arm64.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom_type_b-linux-arm64.zip"
+        },
+        {
+          "name": "rom_type_b-macos.zip",
+          "source_asset": "rom_type_b.zip",
+          "platform": "macos",
+          "model": "Y1",
+          "type": "Type B",
+          "size": 541748570,
+          "sha256": "b615ab9069e6c65fdadc706102d8f847c9e1004e9a08cdaf534fce212524a413",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom_type_b-macos.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom_type_b-macos.zip"
+        },
+        {
+          "name": "rom_type_b-windows.zip",
+          "source_asset": "rom_type_b.zip",
+          "platform": "windows",
+          "model": "Y1",
+          "type": "Type B",
+          "size": 627701237,
+          "sha256": "d72bf6cceb4f84fd7a6df19a123749de2b847e671e1d5fa258fa0d50a94a6f43",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom_type_b-windows.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom_type_b-windows.zip"
+        },
+        {
+          "name": "rom_y2-linux.zip",
+          "source_asset": "rom_y2.zip",
+          "platform": "linux",
+          "model": "Y2",
+          "type": "Stock",
+          "size": 761131127,
+          "sha256": "5589a254301b5fcc43eeadbf5ed4484e0a43b2317b9d9d77e72eb634c566ba70",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom_y2-linux.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom_y2-linux.zip"
+        },
+        {
+          "name": "rom_y2-linux-arm64.zip",
+          "source_asset": "rom_y2.zip",
+          "platform": "linux-arm64",
+          "model": "Y2",
+          "type": "Stock",
+          "size": 586036069,
+          "sha256": "4ece355f32f444c368089b56a8475766968862c469d1a29f9255f63249e89286",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom_y2-linux-arm64.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom_y2-linux-arm64.zip"
+        },
+        {
+          "name": "rom_y2-macos.zip",
+          "source_asset": "rom_y2.zip",
+          "platform": "macos",
+          "model": "Y2",
+          "type": "Stock",
+          "size": 513353461,
+          "sha256": "5b3c60241e3521288e0c57aec64fcfe2ec9dad14b0fd92d73e4d03e7fa1f5e44",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom_y2-macos.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom_y2-macos.zip"
+        },
+        {
+          "name": "rom_y2-windows.zip",
+          "source_asset": "rom_y2.zip",
+          "platform": "windows",
+          "model": "Y2",
+          "type": "Stock",
+          "size": 597502493,
+          "sha256": "358fbca94a01ba1dfed6e326213a06e9852630d29c642749c745e9366ac0c557",
+          "url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/rom_y2-windows.zip",
+          "fallback_url": "https://github.com/ryan-specter/inniclassic-y2-mirror/releases/download/20261105/rom_y2-windows.zip"
+        }
+      ],
+      "original_assets": [
+        "index.html",
+        "InniClassic-20261105.apk",
+        "rom.zip",
+        "rom_type_b.zip",
+        "rom_y1_type_a.zip",
+        "rom_y1_type_b.zip",
+        "rom_y2.zip",
+        "SHA256SUMS.txt",
+        "update.json"
+      ],
+      "stats_url": "https://github.com/y1-community/inniclassic-y2-mirror/releases/download/20261105/stats.txt"
+    },
     {
       "tag": "20261104",
       "title": "Portable Flashing Package: InniClassic 20261104",
